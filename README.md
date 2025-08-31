@@ -286,6 +286,41 @@ import logging
 scraper = UniversalScraper(api_key="your_key", log_level=logging.DEBUG)
 ```
 
+## Core Contributors
+
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
+
+<table>
+<tr>
+
+<td align="center">
+    <a href="https://github.com/PushpenderIndia">
+        <kbd><img src="https://avatars3.githubusercontent.com/PushpenderIndia?size=400" width="100px;" alt=""/></kbd><br />
+        <sub><b>Pushpender Singh</b></sub>
+    </a><br />
+    <a href="https://github.com/Ayushi0405/Universal_Scrapper/commits?author=PushpenderIndia" title="Code"> :computer: </a> 
+</td>
+
+<td align="center">
+    <a href="https://github.com/Ayushi0405">
+        <kbd><img src="https://avatars3.githubusercontent.com/Ayushi0405?size=400" width="100px;" alt=""/></kbd><br />
+        <sub><b>Ayushi Gupta</b></sub>
+    </a><br />
+    <a href="https://github.com/Ayushi0405/Universal_Scrapper/commits?author=Ayushi0405" title="Code"> :computer: </a> 
+</td>
+
+</tr>
+</tr>
+</table>
+
+<!-- markdownlint-enable -->
+<!-- prettier-ignore-end -->
+<!-- ALL-CONTRIBUTORS-LIST:END -->
+
+Contributions of any kind welcome!
+
 ## Contributing
 
 1. Fork the repository

@@ -1,0 +1,2 @@
+[console_scripts]
+universal-scraper = main:main

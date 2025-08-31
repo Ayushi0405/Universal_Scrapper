@@ -1,0 +1,16 @@
+# Core scraping libraries (required)
+requests>=2.25.1
+cloudscraper>=1.2.60
+selenium>=4.0.0
+
+# Optional libraries for enhanced functionality
+httpx>=0.24.0
+requests-html>=0.10.0
+selenium-stealth>=1.0.6
+
+# For Tor support (requires Tor to be installed separately)
+requests[socks]>=2.25.1
+
+# Additional dependencies for requests-html
+pyppeteer>=1.0.2
+pyee>=8.0.1

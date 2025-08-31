@@ -1,16 +1,22 @@
-# Core scraping libraries (required)
-requests>=2.25.1
+# Core web scraping dependencies
 cloudscraper>=1.2.60
-selenium>=4.0.0
+selenium>=4.15.0
+beautifulsoup4>=4.12.0
+lxml>=4.9.0
 
-# Optional libraries for enhanced functionality
-httpx>=0.24.0
-requests-html>=0.10.0
-selenium-stealth>=1.0.6
+# Google Gemini API
+google-generativeai>=0.3.0
 
-# For Tor support (requires Tor to be installed separately)
-requests[socks]>=2.25.1
+# Utility libraries
+requests>=2.31.0
+urllib3>=1.26.0
 
-# Additional dependencies for requests-html
-pyppeteer>=1.0.2
-pyee>=8.0.1
+# Chrome WebDriver (optional - can be installed separately)
+webdriver-manager>=4.0.0
+
+# Data processing
+python-dateutil>=2.8.0
+
+# Optional: For better performance
+cchardet>=2.1.7
+html5lib>=1.1

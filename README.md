@@ -11,6 +11,12 @@ A Python module for AI-powered web scraping with customizable field extraction u
 - 🛡️ **Robust**: Handles edge cases, missing data, and various HTML structures
 - 💾 **JSON Output**: Clean, structured JSON output with metadata
 
+## Installation (Recommended)
+
+```
+pip install universal-scraper
+```
+
 ## Installation
 
 1. **Clone the repository**:

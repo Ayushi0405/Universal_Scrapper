@@ -1,4 +1,4 @@
-# Universal Scraper Python Module
+<h1 align="center"> Universal Scraper</h1>
 
 <h2 align="center"> The Python package for scraping data from any website</h2>
 

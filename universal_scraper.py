@@ -60,13 +60,14 @@ class UniversalScraper:
         self.fetcher = HtmlFetcher(temp_dir=temp_dir)
         self.cleaner = HtmlCleaner(temp_dir=temp_dir)
         
-        # Initialize extractor with custom fields support
+        # Initialize extractor with custom fields support and caching
         self.extractor = CustomDataExtractor(
             api_key=api_key, 
             temp_dir=temp_dir, 
             output_dir=output_dir,
             fields=self.extraction_fields,
-            model_name=model_name
+            model_name=model_name,
+            enable_cache=True
         )
     
     def setup_logging(self, level: int):
@@ -203,6 +204,46 @@ class UniversalScraper:
         
         return results
     
+    def get_cache_stats(self) -> Dict[str, Any]:
+        """
+        Get cache statistics.
+        
+        Returns:
+            Dictionary with cache statistics
+        """
+        return self.extractor.get_cache_stats()
+    
+    def clear_cache(self) -> bool:
+        """
+        Clear the extraction code cache.
+        
+        Returns:
+            True if cleared successfully, False otherwise
+        """
+        return self.extractor.clear_cache()
+    
+    def cleanup_old_cache(self, days_old: int = 30) -> int:
+        """
+        Clean up cache entries older than specified days.
+        
+        Args:
+            days_old: Remove entries older than this many days
+            
+        Returns:
+            Number of entries removed
+        """
+        return self.extractor.cleanup_old_cache(days_old)
+    
+    def disable_cache(self) -> None:
+        """Disable caching for this scraper instance"""
+        self.extractor.enable_cache = False
+        self.logger.info("Caching disabled")
+    
+    def enable_cache(self) -> None:
+        """Enable caching for this scraper instance"""
+        self.extractor.enable_cache = True
+        self.logger.info("Caching enabled")
+    
     def _validate_url(self, url: str) -> bool:
         """Validate URL format"""
         try:
@@ -233,101 +274,26 @@ class UniversalScraper:
 
 class CustomDataExtractor(DataExtractor):
     """
-    Extended DataExtractor that supports custom field configuration
+    Extended DataExtractor that supports custom field configuration with caching
     """
     
-    def __init__(self, api_key=None, temp_dir="temp", output_dir="output", fields=None, model_name=None):
-        super().__init__(api_key, temp_dir, output_dir, model_name)
+    def __init__(self, api_key=None, temp_dir="temp", output_dir="output", fields=None, model_name=None, enable_cache=True):
+        super().__init__(api_key, temp_dir, output_dir, model_name, enable_cache)
         self.fields = fields or ["company_name", "job_title", "apply_link", "salary_range"]
     
     def set_fields(self, fields: List[str]) -> None:
         """Set the fields to extract"""
         self.fields = fields
     
-    def generate_beautifulsoup_code(self, html_content, url=None):
-        """Override to use custom fields in the prompt"""
-        analysis = self.analyze_html_structure(html_content)
-        
-        # Create field descriptions for the prompt
-        field_descriptions = ", ".join(self.fields)
-        
-        prompt = f"""
-You are an expert web scraper. Analyze the following HTML content and generate a Python function using BeautifulSoup that extracts structured data.
-
-HTML Content 
-{html_content}
-
-Requirements:
-1. Create a function named 'extract_data(html_content)' that takes HTML string as input
-2. Return structured data as a JSON-serializable dictionary/list
-3. Only extract the following fields: {field_descriptions}
-4. Handle edge cases and missing elements gracefully
-5. Use descriptive field names in the output that match the requested fields
-6. Group related data logically
-7. Always return the same structure even if some fields are empty
-8. Include error handling
-9. For each item/record, include all requested fields even if some are null/empty
-
-The function should follow this template:
-```python
-from bs4 import BeautifulSoup
-import re
-from datetime import datetime
-
-def extract_data(html_content):
-    soup = BeautifulSoup(html_content, 'html.parser')
-    extracted_data = []
-    
-    try:
-        # Your extraction logic here
-        # Make sure to extract: {field_descriptions}
-        # Return consistent structure with requested fields
-        return extracted_data
-    except Exception as e:
-        print(f"Error extracting data: {{e}}")
-        return []
-```
-
-Only return the Python code, no explanations.
-"""
-        
-        try:
-            self.logger.info(f"Generating BeautifulSoup code for fields: {self.fields}")
-            response = self.model.generate_content(prompt)
-            
-            if response and response.text:
-                code = response.text.strip()
-                
-                # Clean up markdown formatting
-                if code.startswith('```python'):
-                    code = code[9:]
-                elif code.startswith('```'):
-                    code = code[3:]
-                
-                if code.endswith('```'):
-                    code = code[:-3]
-                
-                code = code.strip()
-                
-                self.logger.info("Successfully generated custom BeautifulSoup code")
-                return code
-            else:
-                raise Exception("No response from Gemini API")
-                
-        except Exception as e:
-            self.logger.error(f"Error generating code with Gemini: {str(e)}")
-            raise
+    def get_extraction_fields(self):
+        """Override to return current custom fields"""
+        return self.fields
     
     def extract_data(self, html_content, url=None):
-        """Extract data using the current field configuration"""
+        """Extract data using the current field configuration with caching"""
         try:
-            # Generate code with current fields
-            extraction_code = self.generate_beautifulsoup_code(html_content, url)
-            
-            # Execute the code
-            extracted_data = self.execute_extraction_code(extraction_code, html_content)
-            
-            return extracted_data
+            # Use parent class method which now handles caching
+            return super().extract_data(html_content, url, self.fields)
             
         except Exception as e:
             self.logger.error(f"Data extraction failed: {str(e)}")

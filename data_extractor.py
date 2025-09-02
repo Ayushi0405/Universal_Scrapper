@@ -7,17 +7,29 @@ from datetime import datetime
 from urllib.parse import urlparse
 import google.generativeai as genai
 from bs4 import BeautifulSoup
+from code_cache import CodeCache
 
 class DataExtractor:
-    def __init__(self, api_key=None, temp_dir="temp", output_dir="output", model_name=None):
+    def __init__(self, api_key=None, temp_dir="temp", output_dir="output", model_name=None, enable_cache=True):
         self.logger = logging.getLogger(__name__)
         self.temp_dir = temp_dir
         self.output_dir = output_dir
         self.extraction_codes_dir = os.path.join(temp_dir, "extraction_codes")
+        self.enable_cache = enable_cache
         
         # Create directories
         os.makedirs(self.extraction_codes_dir, exist_ok=True)
         os.makedirs(self.output_dir, exist_ok=True)
+        
+        # Initialize code cache
+        if self.enable_cache:
+            cache_db_path = os.path.join(temp_dir, "extraction_cache.db")
+            cache_dir = os.path.join(temp_dir, "cache")
+            self.code_cache = CodeCache(db_path=cache_db_path, cache_dir=cache_dir)
+            self.logger.info("Code caching enabled")
+        else:
+            self.code_cache = None
+            self.logger.info("Code caching disabled")
         
         # Configure Gemini API
         if api_key:
@@ -77,9 +89,26 @@ class DataExtractor:
             'html_length': len(html_content)
         }
     
-    def generate_beautifulsoup_code(self, html_content, url=None):
-        """Use Gemini to generate BeautifulSoup extraction code"""
+    def get_extraction_fields(self):
+        """Get the current extraction fields. Override in subclasses."""
+        return ["company_name", "job_title", "apply_link", "salary_range"]
+    
+    def generate_beautifulsoup_code(self, html_content, url=None, fields=None):
+        """Use Gemini to generate BeautifulSoup extraction code with caching support"""
+        # Get fields for caching (use provided fields or default)
+        extraction_fields = fields or self.get_extraction_fields()
+        
+        # Check cache first if enabled
+        if self.enable_cache and self.code_cache and url:
+            cached_code = self.code_cache.get_cached_code(url, html_content, extraction_fields)
+            if cached_code:
+                return cached_code
+        
+        # Generate new code if not cached
         analysis = self.analyze_html_structure(html_content)
+        
+        # Create field descriptions for the prompt
+        field_descriptions = ", ".join(extraction_fields)
         
         # Prepare the prompt for Gemini
         prompt = f"""
@@ -91,12 +120,13 @@ HTML Content
 Requirements:
 1. Create a function named 'extract_data(html_content)' that takes HTML string as input
 2. Return structured data as a JSON-serializable dictionary/list
-3. Only extract the company name, apply now link, salary range, job title.
+3. Only extract the following fields: {field_descriptions}
 4. Handle edge cases and missing elements gracefully
-5. Use descriptive field names in the output
+5. Use descriptive field names in the output that match the requested fields
 6. Group related data logically
 7. Always return the same structure even if some fields are empty
 8. Include error handling
+9. For each item/record, include all requested fields even if some are null/empty
 
 The function should follow this template:
 ```python
@@ -110,7 +140,8 @@ def extract_data(html_content):
     
     try:
         # Your extraction logic here
-        # Return consistent structure
+        # Make sure to extract: {field_descriptions}
+        # Return consistent structure with requested fields
         return extracted_data
     except Exception as e:
         print(f"Error extracting data: {{e}}")
@@ -121,7 +152,7 @@ Only return the Python code, no explanations.
 """
         
         try:
-            self.logger.info("Generating BeautifulSoup code with Gemini...")
+            self.logger.info(f"Generating BeautifulSoup code with Gemini for fields: {extraction_fields}")
             response = self.model.generate_content(prompt)
             
             if response and response.text:
@@ -138,6 +169,10 @@ Only return the Python code, no explanations.
                     code = code[:-3]
                 
                 code = code.strip()
+                
+                # Cache the generated code if caching is enabled
+                if self.enable_cache and self.code_cache and url:
+                    self.code_cache.store_code(url, html_content, extraction_fields, code)
                 
                 self.logger.info("Successfully generated BeautifulSoup code")
                 return code
@@ -286,3 +321,41 @@ Only return the Python code, no explanations.
                 'error': str(e),
                 'extraction_code': getattr(self, 'last_generated_code', None)
             }
+    
+    def get_cache_stats(self):
+        """Get cache statistics if caching is enabled"""
+        if self.enable_cache and self.code_cache:
+            return self.code_cache.get_cache_stats()
+        else:
+            return {"message": "Caching is disabled"}
+    
+    def clear_cache(self):
+        """Clear the code cache if caching is enabled"""
+        if self.enable_cache and self.code_cache:
+            return self.code_cache.clear_cache()
+        else:
+            self.logger.info("Caching is disabled - nothing to clear")
+            return False
+    
+    def cleanup_old_cache(self, days_old=30):
+        """Clean up old cache entries if caching is enabled"""
+        if self.enable_cache and self.code_cache:
+            return self.code_cache.cleanup_old_entries(days_old)
+        else:
+            self.logger.info("Caching is disabled - nothing to cleanup")
+            return 0
+    
+    def extract_data(self, html_content, url=None, fields=None):
+        """Extract data using generated code with caching support"""
+        try:
+            # Generate code with current fields (with caching)
+            extraction_code = self.generate_beautifulsoup_code(html_content, url, fields)
+            
+            # Execute the code
+            extracted_data = self.execute_extraction_code(extraction_code, html_content)
+            
+            return extracted_data
+            
+        except Exception as e:
+            self.logger.error(f"Data extraction failed: {str(e)}")
+            raise

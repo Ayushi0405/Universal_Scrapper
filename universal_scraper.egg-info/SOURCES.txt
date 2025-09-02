@@ -1,3 +1,4 @@
+LICENSE
 README.md
 custom_scraper.py
 data_extractor.py

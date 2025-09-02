@@ -25,6 +25,7 @@ Classifier: Topic :: Software Development :: Libraries :: Python Modules
 Classifier: Topic :: Text Processing :: Markup :: HTML
 Requires-Python: >=3.7
 Description-Content-Type: text/markdown
+License-File: LICENSE
 Requires-Dist: google-generativeai>=0.3.0
 Requires-Dist: beautifulsoup4>=4.11.0
 Requires-Dist: requests>=2.28.0
@@ -46,13 +47,25 @@ Dynamic: description
 Dynamic: description-content-type
 Dynamic: home-page
 Dynamic: keywords
+Dynamic: license-file
 Dynamic: project-url
 Dynamic: provides-extra
 Dynamic: requires-dist
 Dynamic: requires-python
 Dynamic: summary
 
-# Universal Scraper Python Module
+<h1 align="center"> Universal Scraper</h1>
+
+<h2 align="center"> The Python package for scraping data from any website</h2>
+
+<p align="center">
+<a href="https://pypi.org/project/universal-scraper/"><img alt="pypi" src="https://img.shields.io/pypi/v/universal-scraper.svg"></a>
+<a href="https://pepy.tech/project/universal-scraper?versions=1*&versions=2*&versions=3*"><img alt="Downloads" src="https://pepy.tech/badge/universal-scraper/month"></a>
+<a href="https://github.com/Ayushi0405/Universal_Scrapper/commits/main"><img alt="GitHub lastest commit" src="https://img.shields.io/github/last-commit/Ayushi0405/Universal_Scrapper?color=blue&style=flat-square"></a>
+<a href="#"><img alt="PyPI - Python Version" src="https://img.shields.io/pypi/pyversions/universal-scraper?style=flat-square"></a>
+</p>
+
+--------------------------------------------------------------------------
 
 A Python module for AI-powered web scraping with customizable field extraction using Google's Gemini AI.
 
@@ -64,6 +77,12 @@ A Python module for AI-powered web scraping with customizable field extraction u
 - 📦 **Modular Design**: Built with clean, modular components
 - 🛡️ **Robust**: Handles edge cases, missing data, and various HTML structures
 - 💾 **JSON Output**: Clean, structured JSON output with metadata
+
+## Installation (Recommended)
+
+```
+pip install universal-scraper
+```
 
 ## Installation
 
@@ -339,6 +358,41 @@ Enable debug logging to see what's happening:
 import logging
 scraper = UniversalScraper(api_key="your_key", log_level=logging.DEBUG)
 ```
+
+## Core Contributors
+
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
+
+<table>
+<tr>
+
+<td align="center">
+    <a href="https://github.com/PushpenderIndia">
+        <kbd><img src="https://avatars3.githubusercontent.com/PushpenderIndia?size=400" width="100px;" alt=""/></kbd><br />
+        <sub><b>Pushpender Singh</b></sub>
+    </a><br />
+    <a href="https://github.com/Ayushi0405/Universal_Scrapper/commits?author=PushpenderIndia" title="Code"> :computer: </a> 
+</td>
+
+<td align="center">
+    <a href="https://github.com/Ayushi0405">
+        <kbd><img src="https://avatars3.githubusercontent.com/Ayushi0405?size=400" width="100px;" alt=""/></kbd><br />
+        <sub><b>Ayushi Gupta</b></sub>
+    </a><br />
+    <a href="https://github.com/Ayushi0405/Universal_Scrapper/commits?author=Ayushi0405" title="Code"> :computer: </a> 
+</td>
+
+</tr>
+</tr>
+</table>
+
+<!-- markdownlint-enable -->
+<!-- prettier-ignore-end -->
+<!-- ALL-CONTRIBUTORS-LIST:END -->
+
+Contributions of any kind welcome!
 
 ## Contributing
 

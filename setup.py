@@ -20,7 +20,7 @@ except FileNotFoundError:
 
 setup(
     name="universal-scraper",
-    version="1.1.0",
+    version="1.2.0",
     author="Ayushi Gupta & Pushpender Singh",
     author_email="aayushi.gupta0405@gmail.com",
     description="AI-powered web scraping with customizable field extraction",
@@ -32,6 +32,7 @@ setup(
         "html_fetcher", 
         "html_cleaner",
         "data_extractor",
+        "code_cache",
         "custom_scraper",
         "main"
     ],
@@ -84,7 +85,9 @@ setup(
         "gemini",
         "automation",
         "html parsing",
-        "structured data"
+        "structured data",
+        "caching",
+        "performance"
     ],
     project_urls={
         "Bug Reports": "https://github.com/Ayushi0405/Universal_Scrapper/issues",

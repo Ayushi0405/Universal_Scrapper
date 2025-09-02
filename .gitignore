@@ -4,3 +4,8 @@ output
 venv
 __pycache__
 .DS_Store
+
+# PyPI build directories
+build/
+dist/
+*.egg-info/

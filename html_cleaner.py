@@ -162,6 +162,89 @@ class HtmlCleaner:
         
         return soup
     
+    def remove_empty_divs_recursive(self, soup):
+        """Recursively remove empty div elements starting from innermost"""
+        def has_meaningful_content(element):
+            """Check if an element has meaningful text content"""
+            if not element:
+                return False
+            
+            # Get text content and strip whitespace
+            text = element.get_text(strip=True)
+            if text:
+                return True
+            
+            # Check for meaningful attributes that indicate the div serves a purpose
+            # (like images, inputs, or other interactive elements)
+            meaningful_tags = ['img', 'input', 'button', 'a', 'form', 'iframe', 'video', 'audio', 'canvas', 'svg']
+            for tag in meaningful_tags:
+                if element.find(tag):
+                    return True
+            
+            # Check for data attributes or specific classes that might indicate functionality
+            if element.get('data-') or element.get('id'):
+                # Be more selective - only keep if it seems functional
+                attrs = element.attrs
+                for attr_name in attrs:
+                    if attr_name.startswith('data-') and not attr_name.startswith('data-testid'):
+                        return True
+                    if attr_name == 'id' and not any(x in str(attrs[attr_name]).lower() for x in ['placeholder', 'skeleton', 'loading']):
+                        return True
+            
+            return False
+        
+        def remove_empty_divs_pass(soup):
+            """Single pass of empty div removal"""
+            removed_count = 0
+            
+            # Find all div elements, starting from deepest nesting
+            all_divs = soup.find_all('div')
+            
+            # Sort by nesting depth (deepest first) to handle innermost divs first
+            divs_by_depth = []
+            for div in all_divs:
+                depth = len(list(div.parents))
+                divs_by_depth.append((depth, div))
+            
+            # Sort by depth in descending order (deepest first)
+            divs_by_depth.sort(key=lambda x: x[0], reverse=True)
+            
+            for depth, div in divs_by_depth:
+                if div.parent is None:  # Already removed
+                    continue
+                
+                if not has_meaningful_content(div):
+                    # Check if removing this div would break structure
+                    parent = div.parent
+                    if parent and parent.name in ['html', 'head', 'body']:
+                        # Don't remove direct children of important structural elements
+                        # unless they're completely empty
+                        if not div.get_text(strip=True) and not div.find_all():
+                            div.decompose()
+                            removed_count += 1
+                    else:
+                        div.decompose()
+                        removed_count += 1
+            
+            return removed_count
+        
+        # Keep removing empty divs until no more can be removed
+        total_removed = 0
+        max_iterations = 10  # Prevent infinite loops
+        iteration = 0
+        
+        while iteration < max_iterations:
+            removed_this_pass = remove_empty_divs_pass(soup)
+            total_removed += removed_this_pass
+            
+            if removed_this_pass == 0:
+                break  # No more empty divs to remove
+                
+            iteration += 1
+        
+        self.logger.info(f"Removed {total_removed} empty div elements in {iteration} iterations")
+        return soup
+    
     def _save_cleaned_html(self, url, html_content, stage):
         """Save cleaned HTML at different stages to temp folder for debugging"""
         try:
@@ -190,8 +273,7 @@ class HtmlCleaner:
         1. Remove noise (scripts, styles, comments)
         2. Remove headers and footers
         3. Focus on main content
-        4. Remove duplicate elements
-        5. Clean empty elements
+        4. Remove empty div elements recursively
         """
         self.logger.info("Starting HTML cleaning process...")
         
@@ -218,6 +300,13 @@ class HtmlCleaner:
         self.logger.info(f"Focused on main content. Length: {len(step3_html)}")
         if save_temp:
             self._save_cleaned_html(url, step3_html, "03_main_content")
+        
+        # Step 4: Remove empty divs recursively
+        soup = self.remove_empty_divs_recursive(soup)
+        step4_html = str(soup)
+        self.logger.info(f"Removed empty divs. Length: {len(step4_html)}")
+        if save_temp:
+            self._save_cleaned_html(url, step4_html, "04_removed_empty_divs")
         
         final_html = str(soup)
         final_length = len(final_html)

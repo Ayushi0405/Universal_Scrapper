@@ -359,3 +359,31 @@ Only return the Python code, no explanations.
         except Exception as e:
             self.logger.error(f"Data extraction failed: {str(e)}")
             raise
+    
+    def extract_data_with_separation(self, cleaned_html, original_html, url=None, fields=None):
+        """
+        Extract data using cleaned HTML for code generation and original HTML for execution.
+        
+        Args:
+            cleaned_html: Cleaned HTML used for AI code generation (reduced size)
+            original_html: Original HTML used for data extraction (complete data)
+            url: URL for caching and logging
+            fields: Fields to extract
+            
+        Returns:
+            Extracted data list
+        """
+        try:
+            self.logger.info("Using HTML separation: cleaned for code generation, original for execution")
+            
+            # Generate code using cleaned HTML (smaller, focused for AI)
+            extraction_code = self.generate_beautifulsoup_code(cleaned_html, url, fields)
+            
+            # Execute the code on original HTML (complete data)
+            extracted_data = self.execute_extraction_code(extraction_code, original_html)
+            
+            return extracted_data
+            
+        except Exception as e:
+            self.logger.error(f"Data extraction with separation failed: {str(e)}")
+            raise

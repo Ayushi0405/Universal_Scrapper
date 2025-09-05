@@ -6,6 +6,7 @@ from bs4 import BeautifulSoup, Comment
 import re
 from collections import Counter
 from difflib import SequenceMatcher
+import hashlib
 
 class HtmlCleaner:
     def __init__(self, temp_dir="temp"):
@@ -134,6 +135,156 @@ class HtmlCleaner:
                     duplicate_groups.append(elements)
         
         return duplicate_groups
+    
+    def get_structural_hash(self, element):
+        """Generate a structural hash for an element based on its DOM structure"""
+        def get_element_tree_structure(elem, max_depth=3, current_depth=0):
+            """Recursively build a structure representation"""
+            if current_depth >= max_depth or not hasattr(elem, 'name') or not elem.name:
+                return ""
+            
+            structure_parts = [elem.name]
+            
+            # Add important attributes (sorted for consistency)
+            if elem.get('class'):
+                structure_parts.append(f"class:{','.join(sorted(elem.get('class')))}")
+            
+            # Add child structure
+            child_structures = []
+            for child in elem.children:
+                if hasattr(child, 'name') and child.name:
+                    child_structure = get_element_tree_structure(child, max_depth, current_depth + 1)
+                    if child_structure:
+                        child_structures.append(child_structure)
+            
+            if child_structures:
+                structure_parts.append(f"children:[{','.join(child_structures)}]")
+            
+            return '|'.join(structure_parts)
+        
+        structure_str = get_element_tree_structure(element)
+        return hashlib.md5(structure_str.encode()).hexdigest()[:16]
+    
+    def find_repeating_structures(self, soup, min_keep=2, min_total=3, similarity_threshold=0.85):
+        """
+        Find repeating HTML structures and keep only a sample of each type.
+        
+        Args:
+            soup: BeautifulSoup object
+            min_keep: Minimum number of similar elements to keep (default: 2)
+            min_total: Minimum total occurrences to consider as repeating (default: 3)
+            similarity_threshold: Structure similarity threshold (0.0-1.0, default: 0.85)
+        
+        Returns:
+            List of elements to remove
+        """
+        body = soup.find('body')
+        if not body:
+            return []
+        
+        # Get potential repeating containers (cards, items, etc.)
+        candidates = body.find_all(['div', 'article', 'section', 'li', 'tr'], recursive=True)
+        
+        # Filter candidates - focus on meaningful containers
+        meaningful_candidates = []
+        for elem in candidates:
+            elem_str = str(elem)
+            elem_text = elem.get_text(strip=True)
+            
+            # Skip if too small, too large, or mostly empty
+            if (len(elem_str) < 200 or len(elem_str) > 10000 or 
+                len(elem_text) < 10 or len(elem_text) > 2000):
+                continue
+                
+            # Skip if it's mostly nested (likely a wrapper)
+            direct_text = elem.get_text(strip=True)
+            child_text = ""
+            for child in elem.children:
+                if hasattr(child, 'get_text'):
+                    child_text += child.get_text(strip=True)
+            
+            if len(direct_text) < len(child_text) * 0.1:  # Less than 10% direct content
+                continue
+                
+            meaningful_candidates.append(elem)
+        
+        # Group by structural hash
+        structure_groups = {}
+        for elem in meaningful_candidates:
+            struct_hash = self.get_structural_hash(elem)
+            if struct_hash not in structure_groups:
+                structure_groups[struct_hash] = []
+            structure_groups[struct_hash].append(elem)
+        
+        # Find similar structures using SequenceMatcher for fine-tuning
+        similar_groups = {}
+        processed_hashes = set()
+        
+        for hash1, group1 in structure_groups.items():
+            if hash1 in processed_hashes or len(group1) < min_total:
+                continue
+                
+            # Start a new similarity group
+            similar_group = list(group1)
+            group_key = hash1
+            processed_hashes.add(hash1)
+            
+            # Compare with other groups
+            for hash2, group2 in structure_groups.items():
+                if hash2 in processed_hashes or len(group2) < min_total:
+                    continue
+                
+                # Use SequenceMatcher to compare structure strings
+                elem1_str = self.get_element_signature(group1[0]) or ""
+                elem2_str = self.get_element_signature(group2[0]) or ""
+                
+                similarity = SequenceMatcher(None, elem1_str, elem2_str).ratio()
+                
+                if similarity >= similarity_threshold:
+                    similar_group.extend(group2)
+                    processed_hashes.add(hash2)
+            
+            if len(similar_group) >= min_total:
+                similar_groups[group_key] = similar_group
+        
+        # Determine which elements to remove
+        elements_to_remove = []
+        
+        for group_key, elements in similar_groups.items():
+            if len(elements) >= min_total:
+                # Sort by position in document to keep the first ones
+                elements_with_pos = []
+                for elem in elements:
+                    pos = 0
+                    current = elem
+                    while current.previous_sibling:
+                        pos += 1
+                        current = current.previous_sibling
+                    elements_with_pos.append((pos, elem))
+                
+                # Sort by position and keep only the first min_keep elements
+                elements_with_pos.sort(key=lambda x: x[0])
+                elements_to_keep = [elem for _, elem in elements_with_pos[:min_keep]]
+                elements_to_remove_from_group = [elem for _, elem in elements_with_pos[min_keep:]]
+                
+                elements_to_remove.extend(elements_to_remove_from_group)
+                
+                self.logger.info(f"Found {len(elements)} similar structures, keeping {len(elements_to_keep)}, removing {len(elements_to_remove_from_group)}")
+        
+        return elements_to_remove
+    
+    def remove_repeating_structures(self, soup, min_keep=2, min_total=3, similarity_threshold=0.85):
+        """Remove repeating structures while keeping a sample of each type"""
+        elements_to_remove = self.find_repeating_structures(soup, min_keep, min_total, similarity_threshold)
+        
+        removed_count = 0
+        for element in elements_to_remove:
+            if element.parent:  # Check if still in tree
+                element.decompose()
+                removed_count += 1
+        
+        self.logger.info(f"Removed {removed_count} repeating structure elements")
+        return soup
 
     def focus_on_main_content(self, soup):
         """Try to identify and focus on the main content area"""
@@ -273,7 +424,8 @@ class HtmlCleaner:
         1. Remove noise (scripts, styles, comments)
         2. Remove headers and footers
         3. Focus on main content
-        4. Remove empty div elements recursively
+        4. Remove repeating structures (keep samples)
+        5. Remove empty div elements recursively
         """
         self.logger.info("Starting HTML cleaning process...")
         
@@ -301,17 +453,24 @@ class HtmlCleaner:
         if save_temp:
             self._save_cleaned_html(url, step3_html, "03_main_content")
         
-        # Step 4: Remove empty divs recursively
-        soup = self.remove_empty_divs_recursive(soup)
+        # Step 4: Remove repeating structures (keep samples)
+        soup = self.remove_repeating_structures(soup, min_keep=2, min_total=3)
         step4_html = str(soup)
-        self.logger.info(f"Removed empty divs. Length: {len(step4_html)}")
+        self.logger.info(f"Removed repeating structures. Length: {len(step4_html)}")
         if save_temp:
-            self._save_cleaned_html(url, step4_html, "04_removed_empty_divs")
+            self._save_cleaned_html(url, step4_html, "04_removed_repeating_structures")
+        
+        # Step 5: Remove empty divs recursively
+        soup = self.remove_empty_divs_recursive(soup)
+        step5_html = str(soup)
+        self.logger.info(f"Removed empty divs. Length: {len(step5_html)}")
+        if save_temp:
+            self._save_cleaned_html(url, step5_html, "05_removed_empty_divs")
         
         final_html = str(soup)
         final_length = len(final_html)
         if save_temp:
-            self._save_cleaned_html(url, final_html, "05_final_cleaned")
+            self._save_cleaned_html(url, final_html, "06_final_cleaned")
         
         self.logger.info(f"HTML cleaning completed. Original: {original_length}, Final: {final_length}")
         self.logger.info(f"Reduction: {((original_length - final_length) / original_length * 100):.1f}%")

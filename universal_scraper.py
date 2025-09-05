@@ -144,11 +144,11 @@ class UniversalScraper:
             # Step 1: Fetch HTML
             raw_html = self.fetcher.fetch_html(url)
             
-            # Step 2: Clean HTML
+            # Step 2: Clean HTML (for AI analysis)
             cleaned_html = self.cleaner.clean_html(raw_html, url=url)
             
-            # Step 3: Extract structured data
-            extracted_data = self.extractor.extract_data(cleaned_html, url)
+            # Step 3: Extract structured data (use cleaned HTML for code generation, original for execution)
+            extracted_data = self.extractor.extract_data_with_separation(cleaned_html, raw_html, url)
             
             result = {
                 "url": url,
@@ -295,6 +295,14 @@ class CustomDataExtractor(DataExtractor):
             # Use parent class method which now handles caching
             return super().extract_data(html_content, url, self.fields)
             
+        except Exception as e:
+            self.logger.error(f"Data extraction failed: {str(e)}")
+            raise
+    
+    def extract_data_with_separation(self, cleaned_html, original_html, url=None):
+        """Extract data using cleaned HTML for code generation and original HTML for execution"""
+        try:
+            return super().extract_data_with_separation(cleaned_html, original_html, url, self.fields)
         except Exception as e:
             self.logger.error(f"Data extraction failed: {str(e)}")
             raise

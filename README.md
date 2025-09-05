@@ -19,7 +19,7 @@ A Python module for AI-powered web scraping with customizable field extraction u
 - 🤖 **AI-Powered Extraction**: Uses Google Gemini to intelligently extract structured data
 - 🎯 **Customizable Fields**: Define exactly which fields you want to extract (e.g., company name, job title, salary)
 - 🚀 **Smart Caching**: Automatically caches extraction code based on HTML structure - saves 90%+ API tokens on repeat scraping
-- 🧹 **Smart HTML Cleaner**: Removes noise and reduces HTML by 65%+ - significantly cuts token usage for AI processing
+- 🧹 **Smart HTML Cleaner**: Removes noise and reduces HTML by 91%+ - significantly cuts token usage for AI processing
 - 🔧 **Easy to Use**: Simple API for both quick scraping and advanced use cases
 - 📦 **Modular Design**: Built with clean, modular components
 - 🛡️ **Robust**: Handles edge cases, missing data, and various HTML structures
